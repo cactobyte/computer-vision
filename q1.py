@@ -3,7 +3,6 @@ import numpy as np
 from typing import Tuple
 from matplotlib import pyplot as plt
 
-
 def create_diagonal_edge_image(size: int = 9) -> np.ndarray:
     """
     Generates a grayscale image with a diagonal edge from top-left to bottom-right.
@@ -12,10 +11,9 @@ def create_diagonal_edge_image(size: int = 9) -> np.ndarray:
     img = np.zeros((size, size), dtype=np.float32)
     for y in range(size):
         for x in range(size):
-            if x > y:  # above main diagonal
+            if x >= y:  # Diagonal included
                 img[y, x] = 255.0
     return img
-
 
 def _apply_3x3_stencil_at(img: np.ndarray, x: int, y: int, k: np.ndarray) -> float:
     """
@@ -23,7 +21,6 @@ def _apply_3x3_stencil_at(img: np.ndarray, x: int, y: int, k: np.ndarray) -> flo
     """
     patch = img[y - 1:y + 2, x - 1:x + 2]
     return float(np.sum(patch * k))
-
 
 def compute_custom_gradient(img: np.ndarray, x: int, y: int) -> Tuple[float, float]:
     """
@@ -45,7 +42,6 @@ def compute_custom_gradient(img: np.ndarray, x: int, y: int) -> Tuple[float, flo
     ang = np.degrees(np.arctan2(gy, gx))  # [-180, 180]
     return mag, ang
 
-
 def compute_diagonal_corrected_gradient(img: np.ndarray, x: int, y: int) -> Tuple[float, float]:
     """
     Modified gradient computation that compensates for diagonal bias.
@@ -60,8 +56,6 @@ def compute_diagonal_corrected_gradient(img: np.ndarray, x: int, y: int) -> Tupl
         mag = mag * np.sqrt(2)
 
     return mag, ang
-
-
 
 def main():
     img = create_diagonal_edge_image(size=9)
@@ -93,7 +87,6 @@ def main():
 
     plt.tight_layout()
     plt.show()
-
 
 if __name__ == "__main__":
     main()

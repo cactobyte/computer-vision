@@ -2,7 +2,6 @@
 import numpy as np
 import cv2
 
-
 def spatial_rgb_histogram(image_bgr: np.ndarray, num_bins: int = 16, grid: int = 2) -> np.ndarray:
     """
     Spatial RGB histogram: split image into grid x grid cells, compute per-cell RGB histograms,
@@ -44,13 +43,11 @@ def spatial_rgb_histogram(image_bgr: np.ndarray, num_bins: int = 16, grid: int =
 
     feat = np.concatenate(feats, axis=0)
 
-    # L1 normalise (common for hist features)
     s = float(np.sum(feat))
     if s > 0:
         feat /= s
 
     return feat
-
 
 def main():
     img = cv2.imread("data/flower.jpg")  # BGR
@@ -58,7 +55,6 @@ def main():
     print("Q2: spatial RGB histogram")
     print("feature length =", feat.size)
     print("sum (should be 1.0) =", float(np.sum(feat)))
-
 
 if __name__ == "__main__":
     main()
