@@ -1,26 +1,35 @@
-# q2.py
 import numpy as np
-import cv2
+from PIL import Image
 
-def spatial_rgb_histogram(image_bgr: np.ndarray, num_bins: int = 16, grid: int = 2) -> np.ndarray:
+
+def _manual_histogram(channel: np.ndarray, num_bins: int) -> np.ndarray:
     """
-    Spatial RGB histogram: split image into grid x grid cells, compute per-cell RGB histograms,
-    concatenate into one feature vector.
+    Computes a histogram for a single channel without using any histogram functions.
+    """
+    hist = np.zeros(num_bins, dtype=np.float32)
+    bin_width = 256.0 / num_bins
+    
+    flat = channel.ravel()
+    
+    for val in flat:
+        b = int(val / bin_width)
+        if b >= num_bins:
+            b = num_bins - 1
+        hist[b] += 1.0
+    
+    return hist
 
-    - Preserves coarse spatial layout (which region has which colours)
-    - Still tractable (vector length = grid*grid*3*num_bins)
 
+def spatial_rgb_histogram(image_rgb: np.ndarray, num_bins: int = 16, grid: int = 2) -> np.ndarray:
+    """
+    Spatial RGB histogram: split image into grid x grid cells, 
+    compute per-cell RGB histograms (manually), concatenate.
     Returns: 1D float32 feature vector (L1-normalised).
     """
-    if image_bgr is None or image_bgr.size == 0:
+    if image_rgb is None or image_rgb.size == 0:
         raise ValueError("Empty image input")
 
-    h, w = image_bgr.shape[:2]
-    # Convert BGR -> RGB
-    image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-
-    # Bin edges for [0, 256)
-    edges = np.linspace(0, 256, num_bins + 1, dtype=np.float32)
+    h, w = image_rgb.shape[:2]
 
     feats = []
     cell_h = h // grid
@@ -30,16 +39,14 @@ def spatial_rgb_histogram(image_bgr: np.ndarray, num_bins: int = 16, grid: int =
         for gx in range(grid):
             y0 = gy * cell_h
             x0 = gx * cell_w
-            # last cell takes the remainder
             y1 = (gy + 1) * cell_h if gy < grid - 1 else h
             x1 = (gx + 1) * cell_w if gx < grid - 1 else w
 
-            cell = image[y0:y1, x0:x1, :]  # RGB
+            cell = image_rgb[y0:y1, x0:x1, :]
 
-            # per-channel histograms
             for c in range(3):
-                hist, _ = np.histogram(cell[:, :, c], bins=edges)
-                feats.append(hist.astype(np.float32))
+                hist = _manual_histogram(cell[:, :, c], num_bins)
+                feats.append(hist)
 
     feat = np.concatenate(feats, axis=0)
 
@@ -49,12 +56,36 @@ def spatial_rgb_histogram(image_bgr: np.ndarray, num_bins: int = 16, grid: int =
 
     return feat
 
+
 def main():
-    img = cv2.imread("data/flower.jpg")  # BGR
+    # Try loading an image, fall back to synthetic
+    try:
+        img = np.array(Image.open("data/flower.jpg").convert("RGB"), dtype=np.float32)
+    except FileNotFoundError:
+        print("No image file found, using synthetic 8x8 test image")
+        img = np.zeros((8, 8, 3), dtype=np.float32)
+        img[:4, :4] = [255, 0, 0]
+        img[:4, 4:] = [0, 255, 0]
+        img[4:, :4] = [0, 0, 255]
+        img[4:, 4:] = [255, 255, 0]
+
     feat = spatial_rgb_histogram(img, num_bins=16, grid=2)
-    print("Q2: spatial RGB histogram")
-    print("feature length =", feat.size)
-    print("sum (should be 1.0) =", float(np.sum(feat)))
+
+    print("Q2: Spatial RGB Histogram")
+    print(f"  Feature vector length: {feat.size}")
+    print(f"  Expected length: {2*2*3*16}")
+    print(f"  Sum (should be 1.0): {float(np.sum(feat)):.6f}")
+    print()
+    print("Spatial information RETAINED:")
+    print("  - Coarse colour distribution per region")
+    print()
+    print("Spatial information LOST:")
+    print("  - Exact pixel positions within each cell")
+    print("  - Fine-grained textures and edges within cells")
+    print()
+    print("Application: Scene classification where layout matters")
+    print("  (e.g., sky=blue at top, grass=green at bottom)")
+
 
 if __name__ == "__main__":
     main()
